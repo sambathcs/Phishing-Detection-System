@@ -9,12 +9,10 @@ from bs4 import BeautifulSoup
 # Set page config for better UI
 st.set_page_config(page_title="Phishing Detection System", page_icon="🔍", layout="wide")
 
-# Custom CSS for better styling
+# Custom CSS for Better Styling
 st.markdown("""
     <style>
-    .reportview-container {
-        background: #F5F7FA;
-    }
+    .reportview-container { background: #F5F7FA; }
     .stButton button {
         background-color: #008CBA !important;
         color: white !important;
@@ -22,15 +20,8 @@ st.markdown("""
         padding: 10px 24px !important;
         border-radius: 8px !important;
     }
-    .stTextInput>div>div>input {
-        font-size: 16px !important;
-    }
-    .stSelectbox>div>div>select {
-        font-size: 16px !important;
-    }
-    .stAlert {
-        font-size: 18px !important;
-    }
+    .stTextInput>div>div>input, .stSelectbox>div>div>select { font-size: 16px !important; }
+    .stAlert { font-size: 18px !important; }
     .title {
         font-size: 30px;
         font-weight: bold;
@@ -83,6 +74,10 @@ with st.spinner("🔄 Running Phishing Detection..."):
             safe_score = 1 - probability[0]  # Assume binary classification
             phishing_score = probability[0]  # Assign single probability value
 
+        # Ensure values are between 0-1
+        safe_score = max(0, min(1, safe_score))
+        phishing_score = max(0, min(1, phishing_score))
+
         ax.bar(["Safe", "Phishing"], [safe_score, phishing_score], color=["green", "red"])
         ax.set_ylabel("Confidence Level")
         ax.set_title("🔎 Detection Confidence")
@@ -101,23 +96,25 @@ def check_url_virustotal(url):
     headers = {"x-apikey": VT_API_KEY}
     data = {"url": url}
 
-    response = requests.post(vt_url, headers=headers, data=data)
+    try:
+        response = requests.post(vt_url, headers=headers, data=data)
+        if response.status_code == 200:
+            analysis_id = response.json()["data"]["id"]
+            report_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
+            report_response = requests.get(report_url, headers=headers)
 
-    if response.status_code == 200:
-        analysis_id = response.json()["data"]["id"]
-        report_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
-        report_response = requests.get(report_url, headers=headers)
+            if report_response.status_code == 200:
+                results = report_response.json()
+                malicious_count = results["data"]["attributes"]["stats"]["malicious"]
 
-        if report_response.status_code == 200:
-            results = report_response.json()
-            malicious_count = results["data"]["attributes"]["stats"]["malicious"]
-
-            if malicious_count > 0:
-                return f"🚨 **This URL is flagged as malicious by {malicious_count} security vendors!**"
-            else:
-                return "✅ **This URL is safe according to VirusTotal!**"
+                if malicious_count > 0:
+                    return f"🚨 **This URL is flagged as malicious by {malicious_count} security vendors!**"
+                else:
+                    return "✅ **This URL is safe according to VirusTotal!**"
+        return "⚠️ Unable to check URL at the moment."
     
-    return "⚠️ Unable to check URL at the moment."
+    except Exception as e:
+        return f"⚠️ VirusTotal API Error: {str(e)}"
 
 # Function to analyze website content for phishing keywords
 def analyze_website_content(url):
@@ -132,14 +129,14 @@ def analyze_website_content(url):
         matches = [word for word in phishing_keywords if word in text]
         
         return matches
-    except:
+    except Exception:
         return None
 
 # 🌐 **Website URL Analysis**
 st.subheader("🌐 Check Website URL")
 url = st.text_input("🔗 Enter a website URL to analyze:")
 
-if st.button("🔍 Analyze Website"):
+if st.button("🔍 Analyze Website", key="analyze_btn"):
     with st.spinner("🚀 Scanning website..."):
         if url:
             try:
@@ -163,7 +160,7 @@ if st.button("🔍 Analyze Website"):
                 else:
                     st.success("✅ **No obvious phishing keywords detected on this website.**")
             
-            except:
+            except Exception:
                 st.error("🚨 **Unable to reach the website!**")
 
 # ✅ **Final Success Message**
