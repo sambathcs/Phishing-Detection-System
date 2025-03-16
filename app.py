@@ -71,19 +71,13 @@ with st.spinner("🔄 Running Phishing Detection..."):
         else:
             st.success("✅ **The website is Safe!**")
 
-      # 📊 Confidence Score Visualization
-st.subheader("📊 Confidence Score")
-fig, ax = plt.subplots()
-
-# Fix IndexError by handling single-class probabilities
-safe_score = probability[0] if len(probability) > 1 else 1 - probability[0]
-phishing_score = probability[1] if len(probability) > 1 else probability[0]
-
-ax.bar(["Safe", "Phishing"], [safe_score, phishing_score], color=["green", "red"])
-ax.set_ylabel("Confidence Level")
-ax.set_title("🔎 Detection Confidence")
-st.pyplot(fig)
-
+        # 📊 **Confidence Score Visualization**
+        st.subheader("📊 Confidence Score")
+        fig, ax = plt.subplots()
+        ax.bar(["Safe", "Phishing"], [probability[0], probability[1]], color=["green", "red"])
+        ax.set_ylabel("Confidence Level")
+        ax.set_title("🔎 Detection Confidence")
+        st.pyplot(fig)
 
     except ValueError as e:
         st.error(f"⚠️ Model Error: {str(e)}")
