@@ -60,7 +60,7 @@ The model is trained on a phishing dataset that contains website features like:
 3️⃣ Get Instant Classification: ✅ Safe / 🚨 Phishing
 
 🌐 Live Demo
-🚀 Try the Phishing Detection Web App (Replace with actual deployment link if available)
+🚀 https://anti-phishing.streamlit.app 
 
 👨‍💻 Contributing
 Want to improve the project? Follow these steps:
