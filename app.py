@@ -100,9 +100,14 @@ print(df.head())
 # In[29]:
 
 
-df = pd.read_csv('/content/phishing_dataset.csv')
-print(df.head())  # Check first few rows
+# Ensure Streamlit finds the dataset
+dataset_path = os.path.join(os.path.dirname(__file__), "phishing_dataset.csv")
 
+# Load the dataset
+df = pd.read_csv(dataset_path)
+
+# Show first 5 rows
+print(df.head())
 
 # **📌 Convert Entire DataFrame to Numeric Format**
 # Try using pd.to_numeric() instead of applymap():
