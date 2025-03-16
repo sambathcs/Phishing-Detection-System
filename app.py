@@ -8,14 +8,21 @@ import numpy as np
 # Load model with caching for performance
 @st.cache_resource
 def load_model():
-    return joblib.load("phishing_model.pkl")
+    try:
+        return joblib.load("phishing_model.pkl")
+    except Exception as e:
+        st.error(f"⚠️ Error loading model: {str(e)}")
+        return None
 
 model = load_model()
 
-# Get the number of features expected by the model
-num_features = model.n_features_in_
+# Ensure model is loaded before proceeding
+if model:
+    num_features = model.n_features_in_  # Get expected number of features
+else:
+    num_features = 5  # Default in case of model loading failure
 
-# Streamlit UI Improvements
+# Streamlit UI Configuration
 st.set_page_config(page_title="Phishing Detection System", page_icon="🔍", layout="wide")
 
 # Sidebar for Input Features
@@ -30,7 +37,7 @@ user_input = np.array([feature_inputs]).reshape(1, -1)
 
 # Main Page Header
 st.markdown("<h1 style='text-align: center;'>🔍 Phishing Detection System</h1>", unsafe_allow_html=True)
-st.markdown("<h4 style='text-align: center; color: grey;'>Enter website features to check if it's <span style='color: green;'>safe</span> or <span style='color: red;'>phishing</span>.</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: grey;'>Enter website features to check if it's <span style='color: green;'>Safe</span> or <span style='color: red;'>Phishing</span>.</h4>", unsafe_allow_html=True)
 
 # Show Sample Dataset
 st.subheader("📊 Sample Dataset")
@@ -44,29 +51,46 @@ df = pd.DataFrame({
 st.dataframe(df)
 
 # Model Prediction
-try:
-    prediction = model.predict(user_input)
-    probability = model.predict_proba(user_input)[0]
+if model:
+    try:
+        prediction = model.predict(user_input)
 
-    # Display Prediction Results
-    st.subheader("📝 User Input Features")
-    st.write(f"**Entered Features:** {feature_inputs}")
+        # Handle probability prediction safely
+        if hasattr(model, "predict_proba"):
+            probability = model.predict_proba(user_input)[0]
+            if len(probability) == 2:  # Ensure two probability values
+                safe_prob = probability[0]
+                phishing_prob = probability[1]
+            else:
+                safe_prob = 1 - prediction[0]
+                phishing_prob = prediction[0]
+        else:
+            safe_prob = 1 - prediction[0]
+            phishing_prob = prediction[0]
 
-    st.subheader("🔍 Prediction Result")
-    if prediction[0] == 1:
-        st.error("🚨 The website is **Phishing**!")
-    else:
-        st.success("✅ The website is **Safe**!")
+        # Display Prediction Results
+        st.subheader("📝 User Input Features")
+        st.write(f"**Entered Features:** {feature_inputs}")
 
-    # Show Confidence Score
-    st.subheader("📊 Confidence Score")
-    fig, ax = plt.subplots()
-    ax.bar(["Safe", "Phishing"], [probability[0], probability[1]], color=["green", "red"])
-    st.pyplot(fig)
+        st.subheader("🔍 Prediction Result")
+        if prediction[0] == 1:
+            st.error("🚨 The website is **Phishing**!")
+        else:
+            st.success("✅ The website is **Safe**!")
 
-except ValueError as e:
-    st.error(f"⚠️ Model Error: {str(e)}")
-    st.stop()
+        # Show Confidence Score (Handle Single-Value Probability Issue)
+        st.subheader("📊 Confidence Score")
+        fig, ax = plt.subplots()
+        ax.bar(["Safe", "Phishing"], [safe_prob, phishing_prob], color=["green", "red"])
+        ax.set_ylim([0, 1])  # Ensure probabilities range from 0 to 1
+        st.pyplot(fig)
+
+    except ValueError as e:
+        st.error(f"⚠️ Model Error: {str(e)}")
+        st.stop()
+    except IndexError:
+        st.error("⚠️ Prediction error: Model output is not valid.")
+        st.stop()
 
 # Live URL Check
 st.subheader("🌐 Check Website URL")
