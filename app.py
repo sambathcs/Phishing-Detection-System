@@ -73,22 +73,24 @@
 
 # In[28]:
 
-
+import os
 import pandas as pd
 from scipy.io import arff
 
+# Ensure Streamlit correctly loads the dataset
+dataset_path = os.path.join(os.path.dirname(__file__), "Training Dataset.arff")
+
 # Load the ARFF file
-data, meta = arff.loadarff('/content/Training Dataset.arff')  # Change path if needed
+data, meta = arff.loadarff(dataset_path)
 
 # Convert to DataFrame
 df = pd.DataFrame(data)
 
-# Save as CSV
-df.to_csv('/content/phishing_dataset.csv', index=False)
+# Save as CSV (Optional - Only needed for debugging)
+df.to_csv("phishing_dataset.csv", index=False)
 
 # Show first 5 rows
 print(df.head())
-
 
 # ➡️ This will create phishing_dataset.csv that you can use in Python.
 
