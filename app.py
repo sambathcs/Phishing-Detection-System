@@ -88,7 +88,7 @@ with st.spinner("🔄 Running Phishing Detection..."):
         st.stop()
 
 # 🚀 **VirusTotal API Integration**
-VT_API_KEY = "YOUR_VIRUSTOTAL_API_KEY"
+VT_API_KEY = "889159fcc1fc7921f6559b1d193b7172008d2c4a14a74fd976371332d836e1a3"
 
 # Function to check URL using VirusTotal API
 def check_url_virustotal(url):
