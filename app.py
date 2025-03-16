@@ -2,81 +2,101 @@ import streamlit as st
 import pandas as pd
 import joblib
 import requests
-import time
 import matplotlib.pyplot as plt
 import numpy as np
-from bs4 import BeautifulSoup  # Extracts website content
+from bs4 import BeautifulSoup
 
-# ✅ Move this line to the first Streamlit command
+# Set page config for better UI
 st.set_page_config(page_title="Phishing Detection System", page_icon="🔍", layout="wide")
 
-# ✅ Load the phishing detection model with caching
+# Custom CSS for better styling
+st.markdown("""
+    <style>
+    .reportview-container {
+        background: #F5F7FA;
+    }
+    .stButton button {
+        background-color: #008CBA !important;
+        color: white !important;
+        font-size: 18px !important;
+        padding: 10px 24px !important;
+        border-radius: 8px !important;
+    }
+    .stTextInput>div>div>input {
+        font-size: 16px !important;
+    }
+    .stSelectbox>div>div>select {
+        font-size: 16px !important;
+    }
+    .stAlert {
+        font-size: 18px !important;
+    }
+    .title {
+        font-size: 30px;
+        font-weight: bold;
+        color: #444;
+        text-align: center;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# 🔹 Load Machine Learning Model
 @st.cache_resource
 def load_model():
     return joblib.load("phishing_model.pkl")
 
 model = load_model()
 
-# ✅ Get the number of features expected by the model
+# Get the number of features expected by the model
 num_features = model.n_features_in_
 
-# 🎯 Sidebar - User Input Features
+# 🚀 **Title**
+st.markdown("<h1 class='title'>🔍 Phishing Detection System</h1>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: grey;'>Analyze website features & detect phishing attempts.</h4>", unsafe_allow_html=True)
+
+# 🏗 **Sidebar for Feature Inputs**
 st.sidebar.title("🔹 Enter Website Features")
 feature_inputs = [st.sidebar.selectbox(f"Feature {i+1}", [0, 1]) for i in range(num_features)]
 user_input = np.array([feature_inputs]).reshape(1, -1)
 
-# 🎯 Main Page - Title
-st.markdown("<h1 style='text-align: center;'>🔍 Phishing Detection System</h1>", unsafe_allow_html=True)
+# 🔍 **Machine Learning Model Prediction**
+with st.spinner("🔄 Running Phishing Detection..."):
+    try:
+        prediction = model.predict(user_input)
+        probability = model.predict_proba(user_input)[0]
 
-# ✅ Machine Learning Model Prediction
-try:
-    prediction = model.predict(user_input)
-    
-    # ✅ Check if `predict_proba()` is valid before accessing indices
-    if hasattr(model, "predict_proba"):
-        probability = model.predict_proba(user_input)
-        
-        if probability.shape[1] == 2:  # Ensure there are two classes
-            safe_prob, phishing_prob = probability[0]
-        else:  
-            safe_prob, phishing_prob = 1.0, 0.0  # Default if only one class is returned
-    else:
-        safe_prob, phishing_prob = 0.5, 0.5  # Default probability if not available
+        st.subheader("🔍 Prediction Result")
+        if prediction[0] == 1:
+            st.error("🚨 **The website is a Phishing site!**")
+        else:
+            st.success("✅ **The website is Safe!**")
 
-    st.subheader("🔍 Prediction Result")
-    if prediction[0] == 1:
-        st.error("🚨 The website is **Phishing**!")
-    else:
-        st.success("✅ The website is **Safe**!")
+        # 📊 **Confidence Score Visualization**
+        st.subheader("📊 Confidence Score")
+        fig, ax = plt.subplots()
+        ax.bar(["Safe", "Phishing"], [probability[0], probability[1]], color=["green", "red"])
+        ax.set_ylabel("Confidence Level")
+        ax.set_title("🔎 Detection Confidence")
+        st.pyplot(fig)
 
-    # 🎯 Confidence Score (Probability)
-    st.subheader("📊 Confidence Score")
-    fig, ax = plt.subplots()
-    ax.bar(["Safe", "Phishing"], [safe_prob, phishing_prob], color=["green", "red"])
-    st.pyplot(fig)
+    except ValueError as e:
+        st.error(f"⚠️ Model Error: {str(e)}")
+        st.stop()
 
-except ValueError as e:
-    st.error(f"⚠️ Model Error: {str(e)}")
-    st.stop()
+# 🚀 **VirusTotal API Integration**
+VT_API_KEY = "YOUR_VIRUSTOTAL_API_KEY"
 
-# 🚀 VirusTotal API Key (Use Environment Variable)
-VT_API_KEY = st.secrets["VIRUSTOTAL_API_KEY"]  # Store API key securely
-
-# ✅ Function to check URL using VirusTotal API
+# Function to check URL using VirusTotal API
 def check_url_virustotal(url):
     vt_url = "https://www.virustotal.com/api/v3/urls"
     headers = {"x-apikey": VT_API_KEY}
     data = {"url": url}
 
-    # 🕵️‍♂️ Submit URL for scanning
     response = requests.post(vt_url, headers=headers, data=data)
 
     if response.status_code == 200:
         analysis_id = response.json()["data"]["id"]
         report_url = f"https://www.virustotal.com/api/v3/analyses/{analysis_id}"
-
-        # ⏳ Wait for analysis (VirusTotal takes time)
-        time.sleep(10)  # Allow time for scanning
         report_response = requests.get(report_url, headers=headers)
 
         if report_response.status_code == 200:
@@ -90,14 +110,14 @@ def check_url_virustotal(url):
     
     return "⚠️ Unable to check URL at the moment."
 
-# ✅ Function to analyze website content for phishing keywords
+# Function to analyze website content for phishing keywords
 def analyze_website_content(url):
     try:
         response = requests.get(url, timeout=5)
         soup = BeautifulSoup(response.text, "html.parser")
         text = soup.get_text().lower()
 
-        # 🕵️‍♂️ Phishing-related keywords
+        # Common phishing indicators
         phishing_keywords = ["verify", "login", "bank", "account", "password", "security", "update", "urgent", "restricted"]
         
         matches = [word for word in phishing_keywords if word in text]
@@ -106,35 +126,36 @@ def analyze_website_content(url):
     except:
         return None
 
-# 🌐 **Website URL Analysis Section**
+# 🌐 **Website URL Analysis**
 st.subheader("🌐 Check Website URL")
-url = st.text_input("Enter a website URL to analyze:")
+url = st.text_input("🔗 Enter a website URL to analyze:")
 
 if st.button("🔍 Analyze Website"):
-    if url:
-        try:
-            # ✅ Step 1: Check if website is accessible
-            response = requests.get(url, timeout=5)
-            if response.status_code == 200:
-                st.success("✅ Website is accessible!")
-            else:
-                st.warning(f"⚠️ Website might be down! Status Code: {response.status_code}")
+    with st.spinner("🚀 Scanning website..."):
+        if url:
+            try:
+                # Step 1: Check if website is accessible
+                response = requests.get(url, timeout=5)
+                if response.status_code == 200:
+                    st.success("✅ **Website is accessible!**")
+                else:
+                    st.warning(f"⚠️ **Website might be down! Status Code: {response.status_code}**")
 
-            # ✅ Step 2: Check website using VirusTotal API
-            vt_result = check_url_virustotal(url)
-            st.write(vt_result)
+                # Step 2: Check website using VirusTotal
+                vt_result = check_url_virustotal(url)
+                st.write(vt_result)
 
-            # ✅ Step 3: Analyze website content for phishing indicators
-            phishing_matches = analyze_website_content(url)
-            if phishing_matches is None:
-                st.warning("⚠️ Unable to extract website content.")
-            elif len(phishing_matches) > 0:
-                st.error(f"🚨 Warning! Phishing-related words found: {', '.join(phishing_matches)}")
-            else:
-                st.success("✅ No obvious phishing keywords detected on this website.")
-        
-        except:
-            st.error("🚨 Unable to reach the website!")
+                # Step 3: Analyze website content
+                phishing_matches = analyze_website_content(url)
+                if phishing_matches is None:
+                    st.warning("⚠️ Unable to extract website content.")
+                elif len(phishing_matches) > 0:
+                    st.error(f"🚨 **Warning! Phishing-related words found: {', '.join(phishing_matches)}**")
+                else:
+                    st.success("✅ **No obvious phishing keywords detected on this website.**")
+            
+            except:
+                st.error("🚨 **Unable to reach the website!**")
 
-# ✅ **Success Message**
-st.markdown("<div style='text-align: center; color: green; font-weight: bold;'>✅ App is running successfully!</div>", unsafe_allow_html=True)
+# ✅ **Final Success Message**
+st.markdown("<div style='text-align: center; color: green; font-weight: bold;'>✅ **App is running successfully!**</div>", unsafe_allow_html=True)
